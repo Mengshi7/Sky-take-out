@@ -14,7 +14,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
+
+import static ch.qos.logback.classic.spi.ThrowableProxyVO.build;
 
 @Service
 public class ShoppingCartServiceImpl implements ShoppingCartService {
@@ -70,6 +73,18 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
 
         }
 
+    }
+
+    /**
+     * 查看购物车
+     * @return
+     */
+    @Override
+    public List<ShoppingCart> showShoppingCart() {
+        return shoppingCartMapper.list(ShoppingCart.
+                builder().
+                userId(BaseContext.getCurrentId()).
+                build());
     }
 
 }
