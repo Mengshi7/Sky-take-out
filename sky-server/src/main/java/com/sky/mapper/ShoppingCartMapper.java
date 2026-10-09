@@ -11,6 +11,7 @@ import java.util.List;
 @Mapper
 public interface ShoppingCartMapper {
 
+
     /**
      * 条件查询
      *
