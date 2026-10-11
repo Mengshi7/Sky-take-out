@@ -10,6 +10,7 @@ import com.sky.exception.AddressBookBusinessException;
 import com.sky.exception.OrderBusinessException;
 import com.sky.exception.ShoppingCartBusinessException;
 import com.sky.mapper.*;
+import com.sky.properties.PaymentProperties;
 import com.sky.service.OrderService;
 import com.sky.utils.WeChatPayUtil;
 import com.sky.vo.OrderPaymentVO;
@@ -43,6 +44,8 @@ public class OrderServiceImpl implements OrderService {
     private UserMapper userMapper;
     @Autowired
     private WeChatPayUtil weChatPayUtil;
+    @Autowired
+    private PaymentProperties paymentProperties;
 
     /**
      * 用户下单
@@ -106,7 +109,7 @@ public class OrderServiceImpl implements OrderService {
                 .orderTime(order.getOrderTime())
                 .build();
 
-        return null;
+        return orderSubmitVO;
     }
 
     /**
@@ -115,9 +118,38 @@ public class OrderServiceImpl implements OrderService {
      * @param ordersPaymentDTO
      * @return
      */
+    @Transactional(rollbackFor = Exception.class)
     public OrderPaymentVO payment(OrdersPaymentDTO ordersPaymentDTO) throws Exception {
         // 当前登录用户id
         Long userId = BaseContext.getCurrentId();
+        if (userId == null || ordersPaymentDTO == null
+                || ordersPaymentDTO.getOrderNumber() == null
+                || ordersPaymentDTO.getOrderNumber().trim().isEmpty()) {
+            throw new OrderBusinessException("支付参数错误");
+        }
+        Orders ordersDB = orderMapper.getByNumberAndUserId(ordersPaymentDTO.getOrderNumber(), userId);
+        if (ordersDB == null) {
+            throw new OrderBusinessException("订单不存在或无权操作");
+        }
+        if (!Orders.PENDING_PAYMENT.equals(ordersDB.getStatus())
+                || !Orders.UN_PAID.equals(ordersDB.getPayStatus())) {
+            throw new OrderBusinessException("订单已支付或不处于待付款状态");
+        }
+
+        //本地模拟支付：完成数据库更新后才返回成功，不调用微信支付
+        if (paymentProperties.isMockEnabled()) {
+            LocalDateTime checkoutTime = LocalDateTime.now();
+            int count = orderMapper.payMock(ordersDB.getId(), userId, checkoutTime);
+            if (count != 1) {
+                throw new OrderBusinessException("订单状态已变化，请刷新后重试");
+            }
+            return OrderPaymentVO.builder()
+                    .mockPayment(true)
+                    .orderNumber(ordersDB.getNumber())
+                    .status(Orders.TO_BE_CONFIRMED)
+                    .payStatus(Orders.PAID)
+                    .build();
+        }
         User user = userMapper.getById(userId);
 
         //调用微信支付接口，生成预支付交易单

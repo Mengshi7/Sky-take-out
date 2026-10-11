@@ -43,5 +43,11 @@
         where id = #{id}
     </update>
 
+    <update id="payMock">
+        update orders
+        set status = 2, pay_status = 1, checkout_time = #{checkoutTime}
+        where id = #{id} and user_id = #{userId} and status = 1 and pay_status = 0
+    </update>
+
 </mapper>
 

@@ -3,6 +3,7 @@ package com.sky.utils;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.sky.properties.WeChatProperties;
+import com.sky.exception.OrderBusinessException;
 import com.wechat.pay.contrib.apache.httpclient.WechatPayHttpClientBuilder;
 import com.wechat.pay.contrib.apache.httpclient.util.PemUtil;
 import org.apache.commons.lang.RandomStringUtils;
@@ -67,8 +68,7 @@ public class WeChatPayUtil {
             CloseableHttpClient httpClient = builder.build();
             return httpClient;
         } catch (FileNotFoundException e) {
-            e.printStackTrace();
-            return null;
+            throw new OrderBusinessException("微信支付证书或私钥文件不存在，请配置真实支付证书或在本地dev环境开启模拟支付");
         }
     }
 
